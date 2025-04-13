@@ -2,244 +2,139 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import plotly.express as px
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_absolute_error, r2_score
 from sklearn.cluster import KMeans
-from sklearn.preprocessing import StandardScaler, LabelEncoder
+from mpl_toolkits.mplot3d import Axes3D
 import tensorflow as tf
-from langchain.document_loaders import PyPDFLoader
-from langchain.text_splitter import CharacterTextSplitter
-from langchain.embeddings import HuggingFaceEmbeddings
-from langchain.vectorstores import FAISS
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense
 from transformers import pipeline
 
-# -------------------- Regression Section --------------------
-def regression_page():
-    st.header("📈 Regression Model")
-    uploaded_file = st.file_uploader("Upload CSV", type=["csv"], key="regression")
-    
+# Streamlit App
+st.title("Integrated Machine Learning and NLP App")
+
+# Sidebar Navigation
+app_mode = st.sidebar.selectbox("Choose the functionality", ["Regression", "Clustering", "Neural Network", "LLM"])
+
+# Regression Functionality
+if app_mode == "Regression":
+    st.header("Regression Model")
+    uploaded_file = st.file_uploader("Upload your dataset (CSV)", type="csv")
+    if uploaded_file is not None:
+        data = pd.read_csv(uploaded_file)
+        st.write("Dataset Preview:")
+        st.write(data.head())
+        target_column = st.text_input("Specify target column name")
+        if target_column:
+            try:
+                X = data.drop(columns=[target_column])
+                y = data[target_column]
+                X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+                model = LinearRegression()
+                model.fit(X_train, y_train)
+                y_pred = model.predict(X_test)
+                mae = mean_absolute_error(y_test, y_pred)
+                r2 = r2_score(y_test, y_pred)
+                st.write(f"Mean Absolute Error: {mae}")
+                st.write(f"R2 Score: {r2}")
+                plt.scatter(y_test, y_pred)
+                plt.xlabel("Actual Values")
+                plt.ylabel("Predicted Values")
+                plt.title("Actual vs Predicted")
+                st.pyplot(plt)
+                custom_input = st.text_input("Enter custom data (comma-separated values)")
+                if custom_input:
+                    custom_data = np.array([float(i) for i in custom_input.split(",")]).reshape(1, -1)
+                    prediction = model.predict(custom_data)
+                    st.write(f"Prediction: {prediction[0]}")
+            except Exception as e:
+                st.error(f"Error: {e}")
+
+# Clustering Functionality
+elif app_mode == "Clustering":
+    st.header("Clustering with K-Means")
+    uploaded_file = st.file_uploader("Upload your dataset (CSV)", type="csv")
+    if uploaded_file is not None:
+        data = pd.read_csv(uploaded_file)
+        st.write("Dataset Preview:")
+        st.write(data.head())
+        features = st.multiselect("Select features for clustering", data.columns)
+        if features:
+            X = data[features]
+            n_clusters = st.slider("Select number of clusters", min_value=2, max_value=10, value=3)
+            try:
+                kmeans = KMeans(n_clusters=n_clusters, random_state=42)
+                data['Cluster'] = kmeans.fit_predict(X)
+                st.write("Clustered Dataset:")
+                st.write(data)
+                csv = data.to_csv(index=False)
+                st.download_button("Download Clustered Dataset", data=csv, mime="text/csv")
+                if len(features) == 2:
+                    plt.scatter(data[features[0]], data[features[1]], c=data['Cluster'], cmap='viridis')
+                    plt.scatter(kmeans.cluster_centers_[:, 0], kmeans.cluster_centers_[:, 1], s=200, c='red')
+                    plt.xlabel(features[0])
+                    plt.ylabel(features[1])
+                    plt.title("Clusters")
+                    st.pyplot(plt)
+                elif len(features) == 3:
+                    fig = plt.figure()
+                    ax = fig.add_subplot(111, projection='3d')
+                    ax.scatter(data[features[0]], data[features[1]], data[features[2]], c=data['Cluster'], cmap='viridis')
+                    ax.scatter(kmeans.cluster_centers_[:, 0], kmeans.cluster_centers_[:, 1], kmeans.cluster_centers_[:, 2], s=200, c='red')
+                    ax.set_xlabel(features[0])
+                    ax.set_ylabel(features[1])
+                    ax.set_zlabel(features[2])
+                    st.pyplot(fig)
+            except Exception as e:
+                st.error(f"Error: {e}")
+
+# Neural Network Functionality
+elif app_mode == "Neural Network":
+    st.header("Neural Network for Classification")
+    uploaded_file = st.file_uploader("Upload your dataset (CSV)", type="csv")
+    if uploaded_file is not None:
+        data = pd.read_csv(uploaded_file)
+        st.write("Dataset Preview:")
+        st.write(data.head())
+        target_column = st.text_input("Specify target column name")
+        if target_column:
+            try:
+                X = data.drop(columns=[target_column])
+                y = pd.get_dummies(data[target_column]).values
+                model = Sequential([
+                    Dense(128, activation='relu', input_shape=(X.shape[1],)),
+                    Dense(64, activation='relu'),
+                    Dense(y.shape[1], activation='softmax')
+                ])
+                model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+                history = model.fit(X, y, validation_split=0.2, epochs=10, batch_size=32)
+                plt.plot(history.history['loss'], label='Loss')
+                plt.plot(history.history['val_loss'], label='Validation Loss')
+                plt.legend()
+                st.pyplot(plt)
+                custom_input = st.text_input("Enter custom data (comma-separated values)")
+                if custom_input:
+                    custom_data = np.array([float(i) for i in custom_input.split(",")]).reshape(1, -1)
+                    prediction = model.predict(custom_data)
+                    st.write(f"Prediction: {np.argmax(prediction)}")
+            except Exception as e:
+                st.error(f"Error: {e}")
+
+# LLM Functionality
+elif app_mode == "LLM":
+    st.header("Large Language Model (LLM) - Q&A")
+    model_name = st.selectbox("Select LLM Model", ["mistralai/Mistral-7B-Instruct-v0.1"])
+    qa_pipeline = pipeline("question-answering", model=model_name)
+    uploaded_file = st.file_uploader("Upload your dataset (PDF or CSV)", type=["csv", "pdf"])
     if uploaded_file:
-        df = pd.read_csv(uploaded_file)
-        st.subheader("Dataset Preview")
-        st.dataframe(df.head())
-
-        target = st.text_input("Enter target column name", key="reg_target")
-        if target in df.columns:
-            X = df.drop(columns=[target])
-            y = df[target]
-
-            if st.checkbox("Handle missing values", key="reg_missing"):
-                X = X.fillna(X.mean())
-
-            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
-            model = LinearRegression()
-            model.fit(X_train, y_train)
-            y_pred = model.predict(X_test)
-
-            st.subheader("Model Performance")
-            col1, col2 = st.columns(2)
-            col1.metric("MAE", f"{mean_absolute_error(y_test, y_pred):.2f}")
-            col2.metric("R² Score", f"{r2_score(y_test, y_pred):.2f}")
-
-            fig, ax = plt.subplots()
-            ax.scatter(y_test, y_pred)
-            ax.plot([y.min(), y.max()], [y.min(), y.max()], 'k--', lw=2)
-            ax.set_xlabel("Actual")
-            ax.set_ylabel("Predicted")
-            st.pyplot(fig)
-
-            st.subheader("Custom Prediction")
-            inputs = {}
-            for col in X.columns:
-                inputs[col] = st.number_input(f"{col}", key=f"reg_{col}")
-            if st.button("Predict", key="reg_predict"):
-                custom_data = pd.DataFrame([inputs])
-                prediction = model.predict(custom_data)
-                st.success(f"Predicted {target}: {prediction[0]:.2f}")
-
-# -------------------- Clustering Section --------------------
-def clustering_page():
-    st.header("🧩 Clustering Analysis")
-    uploaded_file = st.file_uploader("Upload CSV", type=["csv"], key="clustering")
-    
-    if uploaded_file:
-        df = pd.read_csv(uploaded_file)
-        st.subheader("Dataset Preview")
-        st.dataframe(df.head())
-
-        features = st.multiselect("Select features for clustering", df.columns, key="cluster_features")
-        if len(features) >= 2:
-            X = df[features]
-            scaler = StandardScaler()
-            X_scaled = scaler.fit_transform(X)
-
-            k = st.slider("Number of clusters", 2, 10, 3, key="n_clusters")
-            kmeans = KMeans(n_clusters=k)
-            clusters = kmeans.fit_predict(X_scaled)
-            df["Cluster"] = clusters
-
-            st.subheader("Cluster Visualization")
-            if len(features) == 2:
-                fig = px.scatter(df, x=features[0], y=features[1], color="Cluster")
-            elif len(features) == 3:
-                fig = px.scatter_3d(df, x=features[0], y=features[1], z=features[2], color="Cluster")
-            else:
-                st.warning("Select 2 or 3 features for visualization")
-                return
-            st.plotly_chart(fig)
-
-            st.download_button(
-                label="Download Clustered Data",
-                data=df.to_csv(index=False),
-                file_name="clustered_data.csv",
-                mime="text/csv"
-            )
-
-# -------------------- Neural Network Section --------------------
-def nn_page():
-    st.header("🧠 Neural Network Classifier")
-    uploaded_file = st.file_uploader("Upload CSV", type=["csv"], key="nn")
-    
-    if uploaded_file:
-        df = pd.read_csv(uploaded_file)
-        st.subheader("Dataset Preview")
-        st.dataframe(df.head())
-
-        target = st.text_input("Enter target column name", key="nn_target")
-        if target in df.columns:
-            X = df.drop(columns=[target])
-            y = df[target]
-
-            # Preprocessing
-            scaler = StandardScaler()
-            X = scaler.fit_transform(X)
-            le = LabelEncoder()
-            y = le.fit_transform(y)
-
-            # Hyperparameters
-            st.subheader("Model Configuration")
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                epochs = st.slider("Epochs", 10, 100, 50)
-            with col2:
-                lr = st.slider("Learning Rate", 0.001, 0.1, 0.01, format="%f")
-            with col3:
-                batch_size = st.selectbox("Batch Size", [16, 32, 64])
-
-            # Model architecture
-            model = tf.keras.Sequential([
-                tf.keras.layers.Dense(64, activation='relu', input_shape=(X.shape[1],)),
-                tf.keras.layers.Dense(32, activation='relu'),
-                tf.keras.layers.Dense(len(np.unique(y)), activation='softmax')
-            ])
-            
-            model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=lr),
-                          loss='sparse_categorical_crossentropy',
-                          metrics=['accuracy'])
-
-            # Training
-            if st.button("Train Model", key="nn_train"):
-                history = model.fit(X, y, 
-                                  epochs=epochs,
-                                  batch_size=batch_size,
-                                  validation_split=0.2,
-                                  verbose=0)
-                
-                st.subheader("Training Progress")
-                fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
-                ax1.plot(history.history['loss'], label='Training Loss')
-                ax1.plot(history.history['val_loss'], label='Validation Loss')
-                ax1.set_title('Loss Evolution')
-                ax1.legend()
-                
-                ax2.plot(history.history['accuracy'], label='Training Accuracy')
-                ax2.plot(history.history['val_accuracy'], label='Validation Accuracy')
-                ax2.set_title('Accuracy Evolution')
-                ax2.legend()
-                
-                st.pyplot(fig)
-
-# -------------------- LLM Q&A Section --------------------
-def llm_page():
-    st.header("🤖 LLM Q&A with RAG")
-    
-    # Document processing
-    uploaded_file = st.file_uploader("Upload PDF Document", type=["pdf"], key="llm")
-    if uploaded_file:
-        with st.spinner("Processing document..."):
-            with open("temp.pdf", "wb") as f:
-                f.write(uploaded_file.getbuffer())
-            
-            loader = PyPDFLoader("temp.pdf")
-            pages = loader.load_and_split()
-            
-            text_splitter = CharacterTextSplitter(
-                chunk_size=1000,
-                chunk_overlap=200
-            )
-            docs = text_splitter.split_documents(pages)
-            
-            embeddings = HuggingFaceEmbeddings()
-            db = FAISS.from_documents(docs, embeddings)
-        
-        # Q&A interface
-        question = st.text_input("Ask about the document:", key="llm_question")
+        st.write("Dataset Uploaded Successfully")
+        question = st.text_input("Ask a Question")
         if question:
-            with st.spinner("Searching for answers..."):
-                relevant_docs = db.similarity_search(question, k=3)
-                context = "\n\n".join([doc.page_content for doc in relevant_docs])
-                
-                llm = pipeline(
-                    "text-generation",
-                    model="mistralai/Mistral-7B-Instruct-v0.1",
-                    device_map="auto"
-                )
-                
-                prompt = f"""<s>[INST] Answer the question based on the context below:
-                Context: {context}
-                Question: {question} [/INST]"""
-                
-                response = llm(
-                    prompt,
-                    max_new_tokens=500,
-                    do_sample=True,
-                    temperature=0.7
-                )[0]['generated_text']
-                
-            st.subheader("Answer")
-            st.write(response.split("[/INST]")[-1].strip())
-
-# -------------------- Main App --------------------
-def main():
-    st.set_page_config(page_title="ML Suite", layout="wide")
-    
-    st.sidebar.title("Navigation")
-    page = st.sidebar.radio("Choose a module:", [
-        "Regression",
-        "Clustering",
-        "Neural Network",
-        "LLM Q&A"
-    ])
-    
-    st.sidebar.markdown("---")
-    st.sidebar.info("""
-    **ML Suite** provides multiple machine learning capabilities:
-    - 📈 Regression modeling
-    - 🧩 K-Means clustering
-    - 🧠 Neural network training
-    - 🤖 LLM-based Q&A with RAG
-    """)
-    
-    if page == "Regression":
-        regression_page()
-    elif page == "Clustering":
-        clustering_page()
-    elif page == "Neural Network":
-        nn_page()
-    elif page == "LLM Q&A":
-        llm_page()
-
-if __name__ == "__main__":
-    main()
+            try:
+                context = "Provide context from the uploaded dataset here."
+                response = qa_pipeline(question=question, context=context)
+                st.write(f"Answer: {response['answer']}")
+            except Exception as e:
+                st.error(f"Error: {e}")
