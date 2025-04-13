@@ -16,4 +16,4 @@ pypdf2
 pdfplumber
 pdfminer.six
 pypdf
-mpl_toolkits
+
