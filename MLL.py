@@ -24,9 +24,9 @@ from tensorflow.keras.layers import Dense
 # LangChain + FAISS + HuggingFace
 from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
-from langchain.llms import HuggingFacePipeline
+from langchain_community.llms import HuggingFacePipeline
 from langchain.chains import RetrievalQA
 
 # HuggingFace transformers
@@ -195,18 +195,18 @@ elif section == "Clustering":
 
 # ---------------------- LLM Q&A MODULE ---------------------- #
 elif section == "LLM Q&A":
-    st.title("2025 Ghana Budget Q&A")
+    st.title("📖 2025 Ghana Budget Q&A")
 
     st.markdown("""
     **Architecture (RAG):**
     - Load and split PDF
     - Embed and store in FAISS
     - Retrieve relevant chunks
-    - Ask Falcon-RW-1B LLM to generate answers via Hugging Face API
+    - Ask Falcon-RW-1B LLM to generate answers via Hugging Face
     """)
 
     pdf_url = "https://mofep.gov.gh/sites/default/files/budget-statements/2025-Budget-Statement-and-Economic-Policy_v4.pdf"
-    st.markdown(f"[Download the 2025 Budget PDF]({pdf_url})")
+    st.markdown(f"[📥 Download the 2025 Budget PDF]({pdf_url})")
 
     pdf_file = st.file_uploader("📄 Upload the 2025 Budget PDF", type="pdf")
 
@@ -231,15 +231,12 @@ elif section == "LLM Q&A":
         vectordb = FAISS.from_documents(chunks, embeddings)
         retriever = vectordb.as_retriever()
 
-        # Load Falcon-RW-1B model via Hugging Face API
-        pipe = pipeline(
-            "text-generation",
-            model="tiiuae/falcon-rw-1b",
-            max_length=1024
-        )
-
-        from langchain.llms import HuggingFacePipeline
+        # Load Falcon-RW-1B via Hugging Face
+        tokenizer = AutoTokenizer.from_pretrained("tiiuae/falcon-rw-1b")
+        model = AutoModelForCausalLM.from_pretrained("tiiuae/falcon-rw-1b")
+        pipe = pipeline("text-generation", model=model, tokenizer=tokenizer, max_length=1024)
         llm = HuggingFacePipeline(pipeline=pipe)
+
         qa_chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever)
 
         # User query input
@@ -253,4 +250,3 @@ elif section == "LLM Q&A":
                     st.write(response)
                 except Exception as e:
                     st.error(f"Error generating answer: {e}")
-
