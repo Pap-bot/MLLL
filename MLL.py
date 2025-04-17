@@ -33,6 +33,7 @@ from langchain.chains import RetrievalQA
 from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 
 # PDF utilities
+import pydf
 import PyPDF2
 
 # Fix asyncio loop issues in Streamlit
