@@ -42,7 +42,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 import pypdf
 import PyPDF2
 
-# Fix asyncio loop issues in Streamlit
+# Fix asyncio loop issues 
 nest_asyncio.apply()
 
 # Streamlit page config
