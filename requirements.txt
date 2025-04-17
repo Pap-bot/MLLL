@@ -9,6 +9,7 @@ torch
 nest_asyncio
 langchain
 langchain-community
+langchain-huggingface
 faiss-cpu
 sentence-transformers
 transformers
