@@ -194,7 +194,7 @@ elif section == "Clustering":
 
 # ---------------------- LLM Q&A MODULE ---------------------- #
 elif section == "LLM Q&A":
-    st.title("\ud83d\udcac 2025 Ghana Budget Q&A with Mistral-7B")
+    st.title("2025 Ghana Budget Q&A with Mistral-7B")
 
     st.markdown("""
     **Architecture (RAG):**
@@ -207,14 +207,14 @@ elif section == "LLM Q&A":
     pdf_url = "https://mofep.gov.gh/sites/default/files/budget-statements/2025-Budget-Statement-and-Economic-Policy_v4.pdf"
     st.markdown(f"[Download the 2025 Budget PDF]({pdf_url})")
 
-    pdf_file = st.file_uploader("\ud83d\udcc4 Upload the 2025 Budget PDF", type="pdf")
+    pdf_file = st.file_uploader("📄 Upload the 2025 Budget PDF", type="pdf")
 
     if pdf_file:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
             tmp.write(pdf_file.read())
             tmp_path = tmp.name
 
-        st.success("\u2705 PDF uploaded successfully!")
+        st.success("✅ PDF uploaded successfully!")
 
         # Load and split PDF
         loader = PyPDFLoader(tmp_path)
@@ -223,7 +223,7 @@ elif section == "LLM Q&A":
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
         chunks = text_splitter.split_documents(docs)
 
-        st.write(f"\u2705 Document split into {len(chunks)} chunks")
+        st.write(f"✅ Document split into {len(chunks)} chunks")
 
         # Create embeddings
         embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
@@ -240,13 +240,14 @@ elif section == "LLM Q&A":
         qa_chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever)
 
         # User query input
-        query = st.text_input("\ud83d\udd0d Ask a question about the 2025 Ghana Budget")
+        query = st.text_input("Ask a question about the 2025 Ghana Budget")
 
         if query:
-            with st.spinner("\u23f3 Generating answer..."):
+            with st.spinner("⏳ Generating answer..."):
                 try:
                     response = qa_chain.run(query)
-                    st.success("\u2705 Answer:")
+                    st.success("✅ Answer:")
                     st.write(response)
                 except Exception as e:
                     st.error(f"Error generating answer: {e}")
+
