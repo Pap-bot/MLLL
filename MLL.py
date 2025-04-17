@@ -1,3 +1,9 @@
+import os
+os.environ["STREAMLIT_WATCHER_TYPE"] = "none"
+
+
+
+
 # Core libraries
 import streamlit as st
 import pandas as pd
