@@ -194,14 +194,14 @@ elif section == "Clustering":
 
 # ---------------------- LLM Q&A MODULE ---------------------- #
 elif section == "LLM Q&A":
-    st.title("2025 Ghana Budget Q&A with Mistral-7B")
+    st.title("2025 Ghana Budget Q&A")
 
     st.markdown("""
     **Architecture (RAG):**
     - Load and split PDF
     - Embed and store in FAISS
     - Retrieve relevant chunks
-    - Ask Mistral-7B-Instruct LLM to generate answers
+    - Ask Falcon-RW-1B LLM to generate answers via Hugging Face API
     """)
 
     pdf_url = "https://mofep.gov.gh/sites/default/files/budget-statements/2025-Budget-Statement-and-Economic-Policy_v4.pdf"
@@ -230,10 +230,12 @@ elif section == "LLM Q&A":
         vectordb = FAISS.from_documents(chunks, embeddings)
         retriever = vectordb.as_retriever()
 
-        # Load Mistral-7B-Instruct model
-        tokenizer = AutoTokenizer.from_pretrained("mistralai/Mistral-7B-Instruct-v0.1")
-        model = AutoModelForCausalLM.from_pretrained("mistralai/Mistral-7B-Instruct-v0.1")
-        pipe = pipeline("text-generation", model=model, tokenizer=tokenizer, max_length=1024)
+        # Load Falcon-RW-1B model via Hugging Face API
+        pipe = pipeline(
+            "text-generation",
+            model="tiiuae/falcon-rw-1b",
+            max_length=1024
+        )
 
         from langchain.llms import HuggingFacePipeline
         llm = HuggingFacePipeline(pipeline=pipe)
