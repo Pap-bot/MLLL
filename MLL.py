@@ -194,53 +194,59 @@ elif section == "Clustering":
 
 # ---------------------- LLM Q&A MODULE ---------------------- #
 elif section == "LLM Q&A":
-    st.title("💬 LLM Q&A - RAG over 2025 Budget PDF")
+    st.title("\ud83d\udcac 2025 Ghana Budget Q&A with Mistral-7B")
+
     st.markdown("""
     **Architecture (RAG):**
     - Load and split PDF
-    - Embed and store in FAISS vector store
+    - Embed and store in FAISS
     - Retrieve relevant chunks
-    - Ask LLM to generate answer
+    - Ask Mistral-7B-Instruct LLM to generate answers
     """)
 
-    with st.expander("📌 Methodology"):
-        st.markdown("""
-        1. Load the 2025 Budget Statement (PDF).
-        2. Use LangChain + FAISS for document retrieval.
-        3. Use a HuggingFace-compatible LLM to generate answers from context.
-        4. Perform Q&A based on user queries.
-        5. This approach improves accuracy by retrieving only the relevant content chunks before feeding to the LLM.
-        """)
-
     pdf_url = "https://mofep.gov.gh/sites/default/files/budget-statements/2025-Budget-Statement-and-Economic-Policy_v4.pdf"
-    st.markdown(f"Download or use this PDF: [2025 Budget PDF]({pdf_url})")
-    pdf_file = st.file_uploader("Upload PDF (e.g., 2025 Budget)", type="pdf")
+    st.markdown(f"[Download the 2025 Budget PDF]({pdf_url})")
+
+    pdf_file = st.file_uploader("\ud83d\udcc4 Upload the 2025 Budget PDF", type="pdf")
 
     if pdf_file:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
             tmp.write(pdf_file.read())
             tmp_path = tmp.name
 
+        st.success("\u2705 PDF uploaded successfully!")
+
+        # Load and split PDF
         loader = PyPDFLoader(tmp_path)
         docs = loader.load()
 
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
         chunks = text_splitter.split_documents(docs)
 
+        st.write(f"\u2705 Document split into {len(chunks)} chunks")
+
+        # Create embeddings
         embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
         vectordb = FAISS.from_documents(chunks, embeddings)
-
         retriever = vectordb.as_retriever()
 
-        tokenizer = AutoTokenizer.from_pretrained("tiiuae/falcon-rw-1b")
-        model = AutoModelForCausalLM.from_pretrained("tiiuae/falcon-rw-1b")
-        pipe = pipeline("text-generation", model=model, tokenizer=tokenizer, max_length=512)
+        # Load Mistral-7B-Instruct model
+        tokenizer = AutoTokenizer.from_pretrained("mistralai/Mistral-7B-Instruct-v0.1")
+        model = AutoModelForCausalLM.from_pretrained("mistralai/Mistral-7B-Instruct-v0.1")
+        pipe = pipeline("text-generation", model=model, tokenizer=tokenizer, max_length=1024)
 
+        from langchain.llms import HuggingFacePipeline
         llm = HuggingFacePipeline(pipeline=pipe)
         qa_chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever)
 
-        query = st.text_input("Ask a question about the document")
+        # User query input
+        query = st.text_input("\ud83d\udd0d Ask a question about the 2025 Ghana Budget")
+
         if query:
-            with st.spinner("Generating answer..."):
-                response = qa_chain.run(query)
-                st.success(response)
+            with st.spinner("\u23f3 Generating answer..."):
+                try:
+                    response = qa_chain.run(query)
+                    st.success("\u2705 Answer:")
+                    st.write(response)
+                except Exception as e:
+                    st.error(f"Error generating answer: {e}")
